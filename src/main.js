@@ -27,7 +27,6 @@ const bindEvent = (id, event, handler) => {
 
 bindEvent('lang-select', 'change', (e) => { applyLanguage(e.target.value); });
 
-// --- МОДАЛКА ЭЛЕМЕНТА ---
 function openModal(node) {
     editingNodeId = node.id;
     document.getElementById('modal-title').value = node.title || '';
@@ -50,7 +49,6 @@ bindEvent('modal-save', 'click', () => {
     document.getElementById('modal')?.classList.add('hidden'); editingNodeId = null;
 });
 
-// --- КОНТЕКСТНОЕ МЕНЮ ---
 function showContextMenu(event, node) {
     const existing = document.getElementById('context-menu');
     if (existing) existing.remove();
@@ -94,7 +92,7 @@ function showContextMenu(event, node) {
 
     const hr = document.createElement('div'); hr.style.cssText = 'height:1px; background:#eee; margin:4px 0;'; menu.appendChild(hr);
 
-    // --- РАЗМЕР, ЦВЕТА, ЛИНИИ ---
+    // --- РАЗМЕР УЗЛА ---
     const sizeDiv = document.createElement('div');
     sizeDiv.style.cssText = 'padding:6px 12px; display:flex; align-items:center; gap:8px;';
     sizeDiv.innerHTML = `<span style="flex:1">${dict.menu_size}</span>`;
@@ -103,6 +101,27 @@ function showContextMenu(event, node) {
     const btnPlus = document.createElement('button'); btnPlus.textContent = '+';
     btnPlus.addEventListener('click', (e) => { e.stopPropagation(); node.scale = (node.scale || 1) + 0.1; renderer.render(); });
     sizeDiv.appendChild(btnMinus); sizeDiv.appendChild(btnPlus); menu.appendChild(sizeDiv);
+
+    // --- ПРОПОРЦИИ (ВЫНЕСЕНО ВЫШЕ) ---
+    if (node.shape !== 'rect') {
+        const stretchXDiv = document.createElement('div');
+        stretchXDiv.style.cssText = 'padding:0 12px 6px; display:flex; align-items:center; gap:8px;';
+        stretchXDiv.innerHTML = `<span style="flex:1; font-size:12px; color:#007bff;">Ширина</span>`;
+        const sxMinus = document.createElement('button'); sxMinus.textContent = '◀';
+        sxMinus.addEventListener('click', (e) => { e.stopPropagation(); node.stretchX = Math.max(0.5, (node.stretchX || 1) - 0.1); renderer.render(); });
+        const sxPlus = document.createElement('button'); sxPlus.textContent = '▶';
+        sxPlus.addEventListener('click', (e) => { e.stopPropagation(); node.stretchX = (node.stretchX || 1) + 0.1; renderer.render(); });
+        stretchXDiv.appendChild(sxMinus); stretchXDiv.appendChild(sxPlus); menu.appendChild(stretchXDiv);
+
+        const stretchYDiv = document.createElement('div');
+        stretchYDiv.style.cssText = 'padding:0 12px 6px; display:flex; align-items:center; gap:8px;';
+        stretchYDiv.innerHTML = `<span style="flex:1; font-size:12px; color:#007bff;">Высота</span>`;
+        const syMinus = document.createElement('button'); syMinus.textContent = '▼';
+        syMinus.addEventListener('click', (e) => { e.stopPropagation(); node.stretchY = Math.max(0.5, (node.stretchY || 1) - 0.1); renderer.render(); });
+        const syPlus = document.createElement('button'); syPlus.textContent = '▲';
+        syPlus.addEventListener('click', (e) => { e.stopPropagation(); node.stretchY = (node.stretchY || 1) + 0.1; renderer.render(); });
+        stretchYDiv.appendChild(syMinus); stretchYDiv.appendChild(syPlus); menu.appendChild(stretchYDiv);
+    }
 
     const colorTitle = document.createElement('div');
     colorTitle.textContent = dict.menu_bg; colorTitle.style.cssText = 'padding:6px 12px 2px; font-size:12px; color:#666;'; menu.appendChild(colorTitle);
@@ -172,7 +191,6 @@ function showContextMenu(event, node) {
     }, 0);
 }
 
-// --- НАСТРОЙКИ ---
 bindEvent('btn-settings', 'click', () => {
     const bgColorsDiv = document.getElementById('bg-colors');
     if (bgColorsDiv.innerHTML === '') {
@@ -185,15 +203,12 @@ bindEvent('btn-settings', 'click', () => {
     }
     document.getElementById('global-modal')?.classList.remove('hidden');
 });
-
 bindEvent('global-cancel', 'click', () => document.getElementById('global-modal')?.classList.add('hidden'));
-
 bindEvent('global-save', 'click', () => {
     const url = document.getElementById('bg-image-url').value.trim();
     if (url) container.style.backgroundImage = `url(${url})`;
     document.getElementById('global-modal')?.classList.add('hidden');
 });
-
 bindEvent('bg-image-file', 'change', (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -203,18 +218,18 @@ bindEvent('bg-image-file', 'change', (e) => {
     }
 });
 
-// --- СОХРАНЕНИЕ / ЗАГРУЗКА ---
+bindEvent('btn-about', 'click', () => document.getElementById('about-modal')?.classList.remove('hidden'));
+bindEvent('about-close', 'click', () => document.getElementById('about-modal')?.classList.add('hidden'));
+
 function prepareForRust(modelData) {
     return {
         nodes: modelData.nodes.map(n => ({
             id: n.id, x: n.x, y: n.y, title: n.title, text: n.text, link: n.link,
             color: n.color, font_color: n.fontColor || '#333333', shape: n.shape,
             scale: n.scale || 1, is_expanded: n.isExpanded !== undefined ? n.isExpanded : true,
-            font_size: n.fontSize || 14
+            font_size: n.fontSize || 14, stretch_x: n.stretchX || 1, stretch_y: n.stretchY || 1
         })),
-        edges: modelData.edges.map(e => ({
-            from: e.from, to: e.to, color: e.color || '#888888', thickness: e.thickness || 2
-        }))
+        edges: modelData.edges.map(e => ({ from: e.from, to: e.to, color: e.color || '#888888', thickness: e.thickness || 2 }))
     };
 }
 
@@ -252,65 +267,46 @@ bindEvent('load', 'click', async () => {
     } catch (err) { alert('Ошибка: ' + err); }
 });
 
-// --- JSON ОКНО ---
 bindEvent('btn-json', 'click', () => document.getElementById('json-modal')?.classList.remove('hidden'));
 bindEvent('json-close', 'click', () => document.getElementById('json-modal')?.classList.add('hidden'));
-
 bindEvent('json-export', 'click', () => {
     const ta = document.getElementById('json-template-area');
     if (!ta) return;
     const currentData = model.toJSON();
     const cleanData = {
         nodes: currentData.nodes.map(n => ({
-            id: n.id, x: Math.round(n.x), y: Math.round(n.y),
-            title: n.title, text: n.text, color: n.color, fontColor: n.fontColor || '#333333',
-            shape: n.shape, isExpanded: n.isExpanded
+            id: n.id, x: Math.round(n.x), y: Math.round(n.y), title: n.title, text: n.text,
+            color: n.color, fontColor: n.fontColor || '#333333', shape: n.shape, isExpanded: n.isExpanded,
+            stretchX: n.stretchX || 1, stretchY: n.stretchY || 1
         })),
-        edges: currentData.edges.map(e => ({
-            from: e.from, to: e.to, color: e.color, thickness: e.thickness
-        }))
+        edges: currentData.edges.map(e => ({ from: e.from, to: e.to, color: e.color, thickness: e.thickness }))
     };
     ta.value = JSON.stringify(cleanData, null, 2);
 });
-
 bindEvent('json-build', 'click', () => {
     try {
         const input = document.getElementById('json-textarea').value.trim();
         if (!input) return alert('Вставьте JSON код!');
-        
         const data = JSON.parse(input);
         if (!data.nodes || !data.edges) throw new Error('В JSON должны быть массивы "nodes" и "edges"');
-
         if (!confirm('Построить новую карту по этому JSON? Текущая карта будет стёрта.')) return;
-
         model.nodes.clear(); model.edges = []; model._nextId = 1;
-
         data.nodes.forEach(n => {
             const id = n.id || `node_${model._nextId++}`;
             model.nodes.set(id, {
-                id: id, x: n.x || 500, y: n.y || 300,
-                title: n.title || 'Без названия', text: n.text || '', link: n.link || null,
-                color: n.color || '#ffffff', fontColor: n.fontColor || '#333333',
-                shape: n.shape || 'rect', fontSize: n.fontSize || 14, scale: n.scale || 1,
+                id: id, x: n.x || 500, y: n.y || 300, title: n.title || 'Без названия', text: n.text || '', link: n.link || null,
+                color: n.color || '#ffffff', fontColor: n.fontColor || '#333333', shape: n.shape || 'rect', fontSize: n.fontSize || 14, scale: n.scale || 1,
                 isExpanded: n.isExpanded !== undefined ? n.isExpanded : (n.is_expanded !== undefined ? n.is_expanded : true), 
-                baseWidth: 180
+                baseWidth: 180, stretchX: n.stretchX || 1, stretchY: n.stretchY || 1
             });
             const num = parseInt(String(id).replace('node_', ''), 10);
             if (!isNaN(num) && num >= model._nextId) model._nextId = num + 1;
         });
-
         data.edges.forEach(e => {
-            if (model.nodes.has(e.from) && model.nodes.has(e.to)) {
-                model.addEdge(e.from, e.to, e.color, e.thickness);
-            }
+            if (model.nodes.has(e.from) && model.nodes.has(e.to)) model.addEdge(e.from, e.to, e.color, e.thickness);
         });
-
-        renderer.render();
-        document.getElementById('json-modal')?.classList.add('hidden');
-        alert('Карта успешно построена!');
-    } catch (err) {
-        alert('Ошибка в JSON: ' + err.message);
-    }
+        renderer.render(); document.getElementById('json-modal')?.classList.add('hidden'); alert('Карта успешно построена!');
+    } catch (err) { alert('Ошибка в JSON: ' + err.message); }
 });
 
 applyLanguage('ru');

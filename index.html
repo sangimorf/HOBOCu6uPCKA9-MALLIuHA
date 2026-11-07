@@ -6,12 +6,12 @@
     <title data-i18n="title">MindMap</title>
     <link rel="stylesheet" href="/src/styles.css" />
     <style>
-        #json-modal {
+        #json-modal, #about-modal {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0,0,0,0.6); z-index: 2000; 
             display: flex; justify-content: center; align-items: center;
         }
-        #json-modal.hidden { display: none !important; }
+        #json-modal.hidden, #about-modal.hidden { display: none !important; }
         .json-window {
             background: #fff; width: 1200px; max-width: 98vw; height: 90vh; 
             border-radius: 8px; display: flex; flex-direction: column; 
@@ -38,6 +38,7 @@
         <button id="load" type="button" data-i18n="btn_load">📂 Загрузить</button>
         <div class="separator"></div>
         <button id="btn-json" type="button" data-i18n="btn_json">📋 Импорт / Экспорт JSON</button>
+        <button id="btn-about" type="button" data-i18n="btn_about">❓ О программе</button>
         <div class="separator"></div>
         <button id="btn-settings" type="button" data-i18n="btn_settings">⚙️ Настройки</button>
         
@@ -54,6 +55,11 @@
             <option value="be">🇧🇾 Беларуская</option>
             <option value="zh">🇨🇳 中文</option>
             <option value="de">🇩🇪 Deutsch</option>
+            <option value="ja">🇯🇵 日本語</option>
+            <option value="ko">🇰🇷 한국어</option>
+            <option value="tr">🇹🇷 Türkçe</option>
+            <option value="pl">🇵🇱 Polski</option>
+            <option value="nl">🇳🇱 Nederlands</option>
         </select>
     </div>
     
@@ -78,17 +84,41 @@
     <div id="global-modal" class="hidden">
         <div class="modal-content">
             <h3 data-i18n="modal_settings_title">Общие настройки</h3>
-            
             <label data-i18n="modal_bg_color">Цвет фона:</label>
             <div id="bg-colors" style="display:grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-bottom: 15px;"></div>
-            
             <label data-i18n="modal_bg_image">Фоновое изображение (URL или загрузить):</label>
             <input type="text" id="bg-image-url" placeholder="https://..." style="margin-bottom:5px;" />
             <input type="file" id="bg-image-file" accept="image/*" style="margin-bottom:15px;" />
-            
             <div class="modal-actions">
                 <button id="global-save" data-i18n="modal_apply">Применить</button>
                 <button id="global-cancel" data-i18n="modal_cancel">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="about-modal" class="hidden">
+        <div class="modal-content" style="width: 400px; text-align: left;">
+            <h2 style="margin-top:0;">О программе</h2>
+            <p style="font-size: 14px; line-height: 1.5; color: #444;">
+                Приложение для создания и редактирования интеллект-карт. Позволяет визуализировать идеи, создавать иерархии и структурировать информацию.
+            </p>
+            <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
+            <h4 style="margin:0 0 10px 0;">Управление</h4>
+            <ul style="font-size: 13px; padding-left: 20px; color: #555; line-height: 1.6; margin:0;">
+                <li><b>Ctrl + колесико мыши</b> — Приблизить / Отдалить</li>
+                <li><b>Зажатое колесико мыши</b> — Перемещение по карте (Панорама)</li>
+                <li><b>Правая кнопка мыши</b> — Меню элемента (цвет, форма, размер)</li>
+                <li><b>Двойной клик</b> — Редактировать текст и ссылки</li>
+                <li><b>Левый клик + перетаскивание</b> — Двигать элементы</li>
+                <li><b>Кнопка [+] / [-]</b> — Свернуть / Развернуть длинный текст</li>
+            </ul>
+            <hr style="border:0; border-top:1px solid #eee; margin:15px 0;">
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size: 13px;">
+                <span>Лицензия: GNU GPL v3</span>
+                <a href="https://github.com/sangimorf/HOBOCu6uPCKA9-MALLIuHA" target="_blank" style="color:#1976d2; text-decoration:none;">GitHub репозиторий</a>
+            </div>
+            <div class="modal-actions" style="margin-top:20px;">
+                <button id="about-close" style="width:100%;">OK</button>
             </div>
         </div>
     </div>
@@ -116,7 +146,9 @@
       "color": "#bbdefb",
       "fontColor": "#333333",
       "shape": "rect",
-      "isExpanded": true
+      "isExpanded": true,
+      "stretchX": 1,
+      "stretchY": 1
     },
     {
       "id": "child1",
@@ -127,7 +159,9 @@
       "color": "#c8e6c9",
       "fontColor": "#333333",
       "shape": "ellipse",
-      "isExpanded": true
+      "isExpanded": true,
+      "stretchX": 1.5,
+      "stretchY": 1
     }
   ],
   "edges": [

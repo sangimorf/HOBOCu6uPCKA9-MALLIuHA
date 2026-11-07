@@ -82,7 +82,6 @@ export class CanvasRenderer {
         this.viewport.innerHTML = '';
         const { model } = this;
 
-        // ОТРИСОВКА ЛИНИЙ С УЧЕТОМ ЦВЕТА И ТОЛЩИНЫ
         for (const edge of model.edges) {
             const a = model.nodes.get(edge.from);
             const b = model.nodes.get(edge.to);
@@ -93,11 +92,8 @@ export class CanvasRenderer {
             line.setAttribute('y1', a.y);
             line.setAttribute('x2', b.x);
             line.setAttribute('y2', b.y);
-            
-            // Берем цвет и толщину из модели связи, если нет — ставим дефолт
             line.setAttribute('stroke', edge.color || '#888888');
             line.setAttribute('stroke-width', edge.thickness || 2);
-            
             this.viewport.appendChild(line);
         }
 
@@ -113,42 +109,75 @@ export class CanvasRenderer {
         
         const fs = node.fontSize || 14;
         const scale = node.scale || 1;
+        const stretchX = node.stretchX || 1;
+        const stretchY = node.stretchY || 1;
+
+        // ЖЕСТКИЕ ГАБАРИТЫ ШИРИНЫ ДЛЯ ТЕКСТА (в пикселях с учетом масштаба)
+        // Прямоугольник шире, овал уже, ромб самый узкий.
+        let maxTextWidth = 160 * scale;
+        if (node.shape === 'ellipse') maxTextWidth = 130 * scale;
+        if (node.shape === 'diamond') maxTextWidth = 100 * scale;
+
         const charWidth = fs * 0.55;
-        
-        let displayTitle = node.title || '';
-        let displayText = node.text || '';
-        const textColor = node.fontColor || '#333333';
+        const maxChars = Math.floor(maxTextWidth / charWidth);
 
-        if (!node.isExpanded) {
-            if (displayText.length > 20) {
-                displayText = displayText.substring(0, 20) + '...';
-            }
-        }
-
-        let lines = [];
-        if (displayText) {
-            const words = displayText.split(' ');
-            let curr = '';
-            for (const w of words) {
-                if ((curr + w).length > 25) {
-                    if (curr) lines.push(curr.trim());
-                    curr = w + ' ';
+        const splitText = (text) => {
+            if (!text) return [];
+            const words = text.split(' ');
+            let lines = [];
+            let currentLine = '';
+            for (const word of words) {
+                if ((currentLine + word).length > maxChars) {
+                    if (currentLine) lines.push(currentLine.trim());
+                    currentLine = word + ' ';
                 } else {
-                    curr += w + ' ';
+                    currentLine += word + ' ';
                 }
             }
-            if (curr) lines.push(curr.trim());
+            if (currentLine) lines.push(currentLine.trim());
+            return lines;
+        };
+
+        let titleLines = splitText(node.title || '');
+        let textLines = splitText(node.text || '');
+
+        // Обрезаем количество строк, чтобы фигура не вытягивалась в колбасу
+        const maxTitleLines = node.isExpanded ? 8 : 2;
+        const maxTextLines = node.isExpanded ? 12 : 4;
+        let isTruncated = false;
+
+        if (titleLines.length > maxTitleLines) {
+            titleLines = titleLines.slice(0, maxTitleLines);
+            isTruncated = true;
+        }
+        if (textLines.length > maxTextLines) {
+            textLines = textLines.slice(0, maxTextLines);
+            isTruncated = true;
         }
 
         const lineHeight = fs * 1.4;
-        const titleH = displayTitle ? lineHeight : 0;
-        const textH = lines.length * lineHeight;
-        const padding = 24;
+        const textH = (titleLines.length + textLines.length) * lineHeight;
         
-        const contentWidth = Math.max(displayTitle.length, ...lines.map(l => l.length)) * charWidth;
-        const w = Math.max(160 * scale, contentWidth + padding);
-        const h = Math.max(60 * scale, (titleH + textH + padding) * scale);
+        // Базовые габариты
+        let baseW, baseH;
 
+        if (node.shape === 'ellipse') {
+            baseH = Math.max(100 * scale, textH * 1.5 + 40 * scale);
+            baseW = baseH / 1.3;
+            if (baseW < maxTextWidth * 1.6) baseW = maxTextWidth * 1.6;
+        } else if (node.shape === 'diamond') {
+            baseH = Math.max(140 * scale, textH * 2.2 + 40 * scale);
+            baseW = baseH;
+        } else {
+            baseW = Math.max(180 * scale, maxTextWidth + 60 * scale);
+            baseH = Math.max(60 * scale, textH + 30 * scale);
+        }
+
+        // Применяем ручные настройки ширины/высоты
+        const w = baseW * stretchX;
+        const h = baseH * stretchY;
+
+        // Рисуем форму
         let shape;
         if (node.shape === 'ellipse') {
             shape = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
@@ -170,62 +199,59 @@ export class CanvasRenderer {
         shape.setAttribute('fill', node.color);
         g.appendChild(shape);
 
-        let currentY = -h / 2 + padding / 2;
+        // Центрируем весь текст
+        let currentY = -textH / 2;
 
-        if (displayTitle) {
-            const titleEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            titleEl.setAttribute('class', 'node-title');
-            titleEl.setAttribute('x', 0);
-            titleEl.setAttribute('y', currentY + (lineHeight * scale) / 2);
-            titleEl.setAttribute('font-size', (fs + 2) * scale);
-            titleEl.setAttribute('fill', textColor);
-            titleEl.textContent = displayTitle;
-            g.appendChild(titleEl);
-            currentY += lineHeight * scale;
+        if (titleLines.length > 0) {
+            titleLines.forEach((line, index) => {
+                let displayLine = line;
+                if (index === titleLines.length - 1 && isTruncated && titleLines.length === maxTitleLines) displayLine += '...';
+
+                const titleEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                titleEl.setAttribute('class', 'node-title');
+                titleEl.setAttribute('x', 0);
+                titleEl.setAttribute('y', currentY + (lineHeight * scale) / 2);
+                titleEl.setAttribute('font-size', (fs + 2) * scale);
+                titleEl.setAttribute('fill', node.fontColor || '#333333');
+                titleEl.textContent = displayLine;
+                g.appendChild(titleEl);
+                currentY += lineHeight * scale;
+            });
         }
 
-        if (lines.length > 0) {
-            lines.forEach((line) => {
+        if (textLines.length > 0) {
+            textLines.forEach((line, index) => {
+                let displayLine = line;
+                if (index === textLines.length - 1 && isTruncated && textLines.length === maxTextLines) displayLine += '...';
+
                 const textEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 textEl.setAttribute('class', 'node-text');
                 textEl.setAttribute('x', 0);
                 textEl.setAttribute('y', currentY + (lineHeight * scale) / 2);
                 textEl.setAttribute('font-size', fs * scale);
-                textEl.setAttribute('fill', textColor);
-                textEl.textContent = line;
+                textEl.setAttribute('fill', node.fontColor || '#333333');
+                textEl.textContent = displayLine;
                 g.appendChild(textEl);
                 currentY += lineHeight * scale;
             });
         }
 
+        // Кнопка свернуть/развернуть
         const btnGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         btnGroup.style.cursor = 'pointer';
-        
         const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        circle.setAttribute('cx', w / 2 - 10);
-        circle.setAttribute('cy', -h / 2 - 10);
-        circle.setAttribute('r', '10');
-        circle.setAttribute('fill', '#fff');
-        circle.setAttribute('stroke', '#007bff');
-        circle.setAttribute('stroke-width', '2');
-        
+        circle.setAttribute('cx', w / 2 - 10); circle.setAttribute('cy', -h / 2 - 10);
+        circle.setAttribute('r', '10'); circle.setAttribute('fill', '#fff');
+        circle.setAttribute('stroke', '#007bff'); circle.setAttribute('stroke-width', '2');
         const btn = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        btn.setAttribute('class', 'toggle-btn');
-        btn.setAttribute('x', w / 2 - 10);
-        btn.setAttribute('y', -h / 2 - 10);
-        btn.setAttribute('text-anchor', 'middle');
-        btn.setAttribute('dominant-baseline', 'central');
-        btn.setAttribute('font-size', '16');
-        btn.textContent = node.isExpanded ? '−' : '+';
-        
-        btnGroup.appendChild(circle);
-        btnGroup.appendChild(btn);
+        btn.setAttribute('class', 'toggle-btn'); btn.setAttribute('x', w / 2 - 10); btn.setAttribute('y', -h / 2 - 10);
+        btn.setAttribute('text-anchor', 'middle'); btn.setAttribute('dominant-baseline', 'central');
+        btn.setAttribute('font-size', '16'); btn.textContent = node.isExpanded ? '−' : '+';
+        btnGroup.appendChild(circle); btnGroup.appendChild(btn);
         
         btnGroup.addEventListener('mousedown', (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            node.isExpanded = !node.isExpanded;
-            this.render();
+            e.stopPropagation(); e.preventDefault();
+            node.isExpanded = !node.isExpanded; this.render();
         });
         g.appendChild(btnGroup);
         
@@ -236,43 +262,22 @@ export class CanvasRenderer {
             if (e.button !== 0) return;
             e.stopPropagation();
             this.setSelected(node);
-            
-            const pt = this.svg.createSVGPoint();
-            pt.x = e.clientX;
-            pt.y = e.clientY;
+            const pt = this.svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
             const svgP = pt.matrixTransform(this.viewport.getScreenCTM().inverse());
-
             this._dragData = { node, offsetX: node.x - svgP.x, offsetY: node.y - svgP.y, g };
         });
-
-        g.addEventListener('dblclick', (e) => {
-            e.stopPropagation();
-            this.callbacks.onNodeDblClick?.(node);
-        });
-
-        g.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            this.setSelected(node);
-            this.callbacks.onNodeContextMenu?.(e, node);
-        });
+        g.addEventListener('dblclick', (e) => { e.stopPropagation(); this.callbacks.onNodeDblClick?.(node); });
+        g.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); this.setSelected(node); this.callbacks.onNodeContextMenu?.(e, node); });
     }
 
     _onMouseMoveNode(e) {
         if (!this._dragData) return;
         const { node, offsetX, offsetY, g } = this._dragData;
-        
-        const pt = this.svg.createSVGPoint();
-        pt.x = e.clientX;
-        pt.y = e.clientY;
+        const pt = this.svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
         const svgP = pt.matrixTransform(this.viewport.getScreenCTM().inverse());
-
-        node.x = svgP.x + offsetX;
-        node.y = svgP.y + offsetY;
-        
+        node.x = svgP.x + offsetX; node.y = svgP.y + offsetY;
         g.setAttribute('transform', `translate(${node.x}, ${node.y})`);
         this.render();
-        
         const el = Array.from(this.viewport.querySelectorAll('.node-group')).find(n => n.dataset.id === node.id);
         if (el) this.viewport.appendChild(el);
     }
