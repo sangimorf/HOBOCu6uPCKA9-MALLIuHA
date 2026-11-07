@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-i18n="title">MindMap</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+    <style>
+        #json-modal {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6); z-index: 2000; 
+            display: flex; justify-content: center; align-items: center;
+        }
+        #json-modal.hidden { display: none !important; }
+        .json-window {
+            background: #fff; width: 1200px; max-width: 98vw; height: 90vh; 
+            border-radius: 8px; display: flex; flex-direction: column; 
+            overflow: hidden; color: #000; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .json-body { display: flex; gap: 15px; padding: 15px; flex: 1; overflow: hidden; }
+        .json-col { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+        .json-col label { font-weight: bold; font-size: 14px; }
+        .json-col p { font-size: 12px; color: #666; margin: 0 0 5px 0; }
+        .json-textarea {
+            flex: 1; width: 100%; padding: 10px; font-family: monospace; 
+            font-size: 13px; border: 1px solid #ccc; border-radius: 4px; 
+            resize: none; background: #f9f9f9;
+        }
+        .json-textarea:focus { background: #fff; outline: 2px solid #90caf9; }
+        #lang-select { padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; outline: none; cursor: pointer; margin-left: auto; }
+    </style>
+</head>
+<body>
+    <div id="toolbar">
+        <button id="new-map" type="button" data-i18n="btn_new_map">📄 Новая карта</button>
+        <button id="new-root" type="button" data-i18n="btn_new_root">✨ Новая тема</button>
+        <button id="save" type="button" data-i18n="btn_save">💾 Сохранить</button>
+        <button id="load" type="button" data-i18n="btn_load">📂 Загрузить</button>
+        <div class="separator"></div>
+        <button id="btn-json" type="button" data-i18n="btn_json">📋 Импорт / Экспорт JSON</button>
+        <div class="separator"></div>
+        <button id="btn-settings" type="button" data-i18n="btn_settings">⚙️ Настройки</button>
+        
+        <select id="lang-select">
+            <option value="ru">🇷🇺 Русский</option>
+            <option value="en">🇺🇸 English</option>
+            <option value="he">🇮🇱 עברית</option>
+            <option value="ar">🇸🇦 العربية</option>
+            <option value="fr">🇫🇷 Français</option>
+            <option value="it">🇮🇹 Italiano</option>
+            <option value="es">🇪🇸 Español</option>
+            <option value="uk">🇺🇦 Українська</option>
+            <option value="kk">🇰🇿 Қазақша</option>
+            <option value="be">🇧🇾 Беларуская</option>
+            <option value="zh">🇨🇳 中文</option>
+            <option value="de">🇩🇪 Deutsch</option>
+        </select>
+    </div>
+    
+    <div id="canvas-container"></div>
+
+    <div id="modal" class="hidden">
+        <div class="modal-content">
+            <h3 data-i18n="modal_node_title">Настройки узла</h3>
+            <label data-i18n="modal_title_label">Заголовок (жирный):</label>
+            <input type="text" id="modal-title" />
+            <label data-i18n="modal_text_label">Основной текст:</label>
+            <textarea id="modal-text" rows="3"></textarea>
+            <label data-i18n="modal_link_label">Ссылка:</label>
+            <input type="text" id="modal-link" placeholder="https://..." />
+            <div class="modal-actions">
+                <button id="modal-save" data-i18n="modal_ok">ОК</button>
+                <button id="modal-cancel" data-i18n="modal_cancel">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="global-modal" class="hidden">
+        <div class="modal-content">
+            <h3 data-i18n="modal_settings_title">Общие настройки</h3>
+            
+            <label data-i18n="modal_bg_color">Цвет фона:</label>
+            <div id="bg-colors" style="display:grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-bottom: 15px;"></div>
+            
+            <label data-i18n="modal_bg_image">Фоновое изображение (URL или загрузить):</label>
+            <input type="text" id="bg-image-url" placeholder="https://..." style="margin-bottom:5px;" />
+            <input type="file" id="bg-image-file" accept="image/*" style="margin-bottom:15px;" />
+            
+            <div class="modal-actions">
+                <button id="global-save" data-i18n="modal_apply">Применить</button>
+                <button id="global-cancel" data-i18n="modal_cancel">Отмена</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="json-modal" class="hidden">
+        <div class="json-window">
+            <div style="padding: 15px; border-bottom: 1px solid #ccc; display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="margin: 0; font-size: 18px;" data-i18n="json_modal_title">📋 Импорт / Экспорт карты</h2>
+                <button id="json-close" style="background: none; border: none; font-size: 20px; cursor: pointer;">✖</button>
+            </div>
+
+            <div class="json-body">
+                <div class="json-col">
+                    <label data-i18n="json_template_title">📄 Шаблон для нейросети</label>
+                    <p data-i18n="json_template_desc">Скопируйте этот текст и отправьте ИИ с заданием...</p>
+                    <textarea id="json-template-area" class="json-textarea" readonly style="color: #555;">
+{
+  "nodes": [
+    {
+      "id": "root",
+      "x": 400,
+      "y": 300,
+      "title": "Главная тема",
+      "text": "Здесь можно написать подробное описание темы",
+      "color": "#bbdefb",
+      "fontColor": "#333333",
+      "shape": "rect",
+      "isExpanded": true
+    },
+    {
+      "id": "child1",
+      "x": 700,
+      "y": 150,
+      "title": "Ветка 1",
+      "text": "Текст ветки",
+      "color": "#c8e6c9",
+      "fontColor": "#333333",
+      "shape": "ellipse",
+      "isExpanded": true
+    }
+  ],
+  "edges": [
+    {
+      "from": "root",
+      "to": "child1",
+      "color": "#388e3c",
+      "thickness": 3
+    }
+  ]
+}
+                    </textarea>
+                </div>
+
+                <div class="json-col">
+                    <label data-i18n="json_import_title">📥 Вставить код от ИИ</label>
+                    <p data-i18n="json_import_desc">Вставьте сюда JSON, который выдала нейросеть...</p>
+                    <textarea id="json-textarea" class="json-textarea" placeholder="Вставьте сюда ваш JSON..."></textarea>
+                </div>
+            </div>
+
+            <div style="padding: 15px; display: flex; gap: 10px; justify-content: space-between; border-top: 1px solid #eee; background: #f9f9f9;">
+                <button id="json-export" style="padding: 10px 20px; background: #e3f2fd; border: 1px solid #90caf9; border-radius: 4px; cursor: pointer; font-weight: bold;" data-i18n="json_export_btn">📤 Экспорт текущей карты в левое поле</button>
+                <button id="json-build" style="padding: 10px 20px; background: #4caf50; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 15px;" data-i18n="json_build_btn">🚀 Построить карту</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: sans-serif; overflow: hidden; user-select: none; background: #fafafa; }
+
+#toolbar {
+    position: fixed; top: 0; left: 0; right: 0; height: 44px;
+    background: #fff; border-bottom: 1px solid #ddd;
+    display: flex; align-items: center; padding: 0 10px; gap: 8px;
+    z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+#toolbar button {
+    padding: 4px 10px; cursor: pointer; background: #f0f0f0;
+    border: 1px solid #ccc; border-radius: 4px; font-size: 14px;
+}
+#toolbar button:hover { background: #e0e0e0; }
+.separator { width: 1px; height: 24px; background: #ccc; margin: 0 10px; }
+
+/* Слой для фона */
+#canvas-container {
+    position: absolute; top: 44px; left: 0;
+    width: 100%; height: calc(100% - 44px);
+    cursor: grab; overflow: hidden;
+    background-color: #fafafa;
+    background-size: cover;
+    background-position: center;
+}
+#canvas-container:active { cursor: grabbing; }
+
+svg { width: 100%; height: 100%; display: block; position: relative; z-index: 2; }
+
+.node-group { cursor: move; }
+.node-rect { stroke: #333; stroke-width: 2px; }
+.node-selected { stroke: #007bff !important; stroke-width: 4px !important; }
+
+/* Убираем дефолтные цвета, теперь они задаются инлайн из модели */
+.node-text { text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.node-title { font-weight: bold; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+
+.toggle-btn { cursor: pointer; fill: #007bff; font-weight: bold; font-size: 16px; }
+.toggle-btn:hover { fill: #0056b3; }
+
+/* Модалки */
+#modal, #global-modal {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 1000;
+}
+#modal.hidden, #global-modal.hidden { display: none; }
+.modal-content {
+    background: #fff; padding: 20px; border-radius: 8px;
+    width: 340px; display: flex; flex-direction: column; gap: 8px;
+    color: #000;
+}
+.modal-content input, .modal-content textarea { 
+    padding: 6px; border: 1px solid #ccc; border-radius: 4px; 
+    font-family: inherit; resize: vertical;
+}
+.modal-actions { display: flex; gap: 10px; margin-top: 10px; }
+.modal-actions button { flex: 1; padding: 8px; cursor: pointer; }
