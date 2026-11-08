@@ -23,9 +23,14 @@ pub struct Node {
     #[serde(default = "default_true")]
     pub is_expanded: bool,
     pub font_size: f64,
+    #[serde(default = "default_one")]
+    pub stretch_x: f64,
+    #[serde(default = "default_one")]
+    pub stretch_y: f64,
 }
 
 fn default_true() -> bool { true }
+fn default_one() -> f64 { 1.0 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Edge {

@@ -27,6 +27,7 @@ const bindEvent = (id, event, handler) => {
 
 bindEvent('lang-select', 'change', (e) => { applyLanguage(e.target.value); });
 
+// --- МОДАЛКА ЭЛЕМЕНТА ---
 function openModal(node) {
     editingNodeId = node.id;
     document.getElementById('modal-title').value = node.title || '';
@@ -49,6 +50,7 @@ bindEvent('modal-save', 'click', () => {
     document.getElementById('modal')?.classList.add('hidden'); editingNodeId = null;
 });
 
+// --- КОНТЕКСТНОЕ МЕНЮ ---
 function showContextMenu(event, node) {
     const existing = document.getElementById('context-menu');
     if (existing) existing.remove();
@@ -92,7 +94,7 @@ function showContextMenu(event, node) {
 
     const hr = document.createElement('div'); hr.style.cssText = 'height:1px; background:#eee; margin:4px 0;'; menu.appendChild(hr);
 
-    // --- РАЗМЕР УЗЛА ---
+    // --- РАЗМЕР УЗЛА (ОБЩИЙ МАСШТАБ) ---
     const sizeDiv = document.createElement('div');
     sizeDiv.style.cssText = 'padding:6px 12px; display:flex; align-items:center; gap:8px;';
     sizeDiv.innerHTML = `<span style="flex:1">${dict.menu_size}</span>`;
@@ -102,7 +104,7 @@ function showContextMenu(event, node) {
     btnPlus.addEventListener('click', (e) => { e.stopPropagation(); node.scale = (node.scale || 1) + 0.1; renderer.render(); });
     sizeDiv.appendChild(btnMinus); sizeDiv.appendChild(btnPlus); menu.appendChild(sizeDiv);
 
-    // --- ПРОПОРЦИИ (ВЫНЕСЕНО ВЫШЕ) ---
+    // --- ПРОПОРЦИИ (Только для эллипса и ромба) ---
     if (node.shape !== 'rect') {
         const stretchXDiv = document.createElement('div');
         stretchXDiv.style.cssText = 'padding:0 12px 6px; display:flex; align-items:center; gap:8px;';
@@ -191,6 +193,7 @@ function showContextMenu(event, node) {
     }, 0);
 }
 
+// --- НАСТРОЙКИ ---
 bindEvent('btn-settings', 'click', () => {
     const bgColorsDiv = document.getElementById('bg-colors');
     if (bgColorsDiv.innerHTML === '') {
@@ -203,12 +206,15 @@ bindEvent('btn-settings', 'click', () => {
     }
     document.getElementById('global-modal')?.classList.remove('hidden');
 });
+
 bindEvent('global-cancel', 'click', () => document.getElementById('global-modal')?.classList.add('hidden'));
+
 bindEvent('global-save', 'click', () => {
     const url = document.getElementById('bg-image-url').value.trim();
     if (url) container.style.backgroundImage = `url(${url})`;
     document.getElementById('global-modal')?.classList.add('hidden');
 });
+
 bindEvent('bg-image-file', 'change', (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -218,9 +224,11 @@ bindEvent('bg-image-file', 'change', (e) => {
     }
 });
 
+// --- ОКНО "О ПРОГРАММЕ" ---
 bindEvent('btn-about', 'click', () => document.getElementById('about-modal')?.classList.remove('hidden'));
 bindEvent('about-close', 'click', () => document.getElementById('about-modal')?.classList.add('hidden'));
 
+// --- СОХРАНЕНИЕ / ЗАГРУЗКА ---
 function prepareForRust(modelData) {
     return {
         nodes: modelData.nodes.map(n => ({
@@ -267,6 +275,7 @@ bindEvent('load', 'click', async () => {
     } catch (err) { alert('Ошибка: ' + err); }
 });
 
+// --- JSON ОКНО ---
 bindEvent('btn-json', 'click', () => document.getElementById('json-modal')?.classList.remove('hidden'));
 bindEvent('json-close', 'click', () => document.getElementById('json-modal')?.classList.add('hidden'));
 bindEvent('json-export', 'click', () => {

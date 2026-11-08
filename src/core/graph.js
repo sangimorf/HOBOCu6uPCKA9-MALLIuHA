@@ -9,8 +9,8 @@ export class MindMapModel {
         const id = `node_${this._nextId++}`;
         this.nodes.set(id, { 
             id, x, y, title, text, link, color, shape, 
-            fontSize, scale, isExpanded: true, baseWidth: 180, // ПО УМОЛЧАНИЮ РАСКРЫТ
-            fontColor: '#333333'
+            fontSize, scale, isExpanded: true, baseWidth: 180,
+            fontColor: '#333333', stretchX: 1, stretchY: 1
         });
         return id;
     }
@@ -43,13 +43,14 @@ export class MindMapModel {
     static fromJSON(data) {
         const m = new MindMapModel();
         for (const n of data.nodes ?? []) {
-            // Конвертируем snake_case из Rust обратно в camelCase для JS
             m.nodes.set(n.id, { 
                 baseWidth: 180, shape: 'rect', fontSize: 14, scale: 1,
                 title: 'Заголовок', text: '', fontColor: '#333333', ...n,
                 isExpanded: n.is_expanded !== undefined ? n.is_expanded : (n.isExpanded !== undefined ? n.isExpanded : true),
                 fontColor: n.font_color || n.fontColor || '#333333',
-                fontSize: n.font_size || n.fontSize || 14
+                fontSize: n.font_size || n.fontSize || 14,
+                stretchX: n.stretch_x !== undefined ? n.stretch_x : (n.stretchX !== undefined ? n.stretchX : 1),
+                stretchY: n.stretch_y !== undefined ? n.stretch_y : (n.stretchY !== undefined ? n.stretchY : 1)
             });
             const num = parseInt(String(n.id).replace('node_', ''), 10);
             if (!isNaN(num) && num >= m._nextId) m._nextId = num + 1;
