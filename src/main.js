@@ -27,7 +27,6 @@ const bindEvent = (id, event, handler) => {
 
 bindEvent('lang-select', 'change', (e) => { applyLanguage(e.target.value); });
 
-// --- МОДАЛКА ЭЛЕМЕНТА ---
 function openModal(node) {
     editingNodeId = node.id;
     document.getElementById('modal-title').value = node.title || '';
@@ -50,7 +49,6 @@ bindEvent('modal-save', 'click', () => {
     document.getElementById('modal')?.classList.add('hidden'); editingNodeId = null;
 });
 
-// --- КОНТЕКСТНОЕ МЕНЮ ---
 function showContextMenu(event, node) {
     const existing = document.getElementById('context-menu');
     if (existing) existing.remove();
@@ -104,26 +102,24 @@ function showContextMenu(event, node) {
     btnPlus.addEventListener('click', (e) => { e.stopPropagation(); node.scale = (node.scale || 1) + 0.1; renderer.render(); });
     sizeDiv.appendChild(btnMinus); sizeDiv.appendChild(btnPlus); menu.appendChild(sizeDiv);
 
-    // --- ПРОПОРЦИИ (Только для эллипса и ромба) ---
-    if (node.shape !== 'rect') {
-        const stretchXDiv = document.createElement('div');
-        stretchXDiv.style.cssText = 'padding:0 12px 6px; display:flex; align-items:center; gap:8px;';
-        stretchXDiv.innerHTML = `<span style="flex:1; font-size:12px; color:#007bff;">Ширина</span>`;
-        const sxMinus = document.createElement('button'); sxMinus.textContent = '◀';
-        sxMinus.addEventListener('click', (e) => { e.stopPropagation(); node.stretchX = Math.max(0.5, (node.stretchX || 1) - 0.1); renderer.render(); });
-        const sxPlus = document.createElement('button'); sxPlus.textContent = '▶';
-        sxPlus.addEventListener('click', (e) => { e.stopPropagation(); node.stretchX = (node.stretchX || 1) + 0.1; renderer.render(); });
-        stretchXDiv.appendChild(sxMinus); stretchXDiv.appendChild(sxPlus); menu.appendChild(stretchXDiv);
+    // --- ПРОПОРЦИИ (ТЕПЕРЬ ДЛЯ ВСЕХ ФИГУР) ---
+    const stretchXDiv = document.createElement('div');
+    stretchXDiv.style.cssText = 'padding:0 12px 6px; display:flex; align-items:center; gap:8px;';
+    stretchXDiv.innerHTML = `<span style="flex:1; font-size:12px; color:#007bff;">Ширина</span>`;
+    const sxMinus = document.createElement('button'); sxMinus.textContent = '◀';
+    sxMinus.addEventListener('click', (e) => { e.stopPropagation(); node.stretchX = Math.max(0.5, (node.stretchX || 1) - 0.1); renderer.render(); });
+    const sxPlus = document.createElement('button'); sxPlus.textContent = '▶';
+    sxPlus.addEventListener('click', (e) => { e.stopPropagation(); node.stretchX = (node.stretchX || 1) + 0.1; renderer.render(); });
+    stretchXDiv.appendChild(sxMinus); stretchXDiv.appendChild(sxPlus); menu.appendChild(stretchXDiv);
 
-        const stretchYDiv = document.createElement('div');
-        stretchYDiv.style.cssText = 'padding:0 12px 6px; display:flex; align-items:center; gap:8px;';
-        stretchYDiv.innerHTML = `<span style="flex:1; font-size:12px; color:#007bff;">Высота</span>`;
-        const syMinus = document.createElement('button'); syMinus.textContent = '▼';
-        syMinus.addEventListener('click', (e) => { e.stopPropagation(); node.stretchY = Math.max(0.5, (node.stretchY || 1) - 0.1); renderer.render(); });
-        const syPlus = document.createElement('button'); syPlus.textContent = '▲';
-        syPlus.addEventListener('click', (e) => { e.stopPropagation(); node.stretchY = (node.stretchY || 1) + 0.1; renderer.render(); });
-        stretchYDiv.appendChild(syMinus); stretchYDiv.appendChild(syPlus); menu.appendChild(stretchYDiv);
-    }
+    const stretchYDiv = document.createElement('div');
+    stretchYDiv.style.cssText = 'padding:0 12px 6px; display:flex; align-items:center; gap:8px;';
+    stretchYDiv.innerHTML = `<span style="flex:1; font-size:12px; color:#007bff;">Высота</span>`;
+    const syMinus = document.createElement('button'); syMinus.textContent = '▼';
+    syMinus.addEventListener('click', (e) => { e.stopPropagation(); node.stretchY = Math.max(0.5, (node.stretchY || 1) - 0.1); renderer.render(); });
+    const syPlus = document.createElement('button'); syPlus.textContent = '▲';
+    syPlus.addEventListener('click', (e) => { e.stopPropagation(); node.stretchY = (node.stretchY || 1) + 0.1; renderer.render(); });
+    stretchYDiv.appendChild(syMinus); stretchYDiv.appendChild(syPlus); menu.appendChild(stretchYDiv);
 
     const colorTitle = document.createElement('div');
     colorTitle.textContent = dict.menu_bg; colorTitle.style.cssText = 'padding:6px 12px 2px; font-size:12px; color:#666;'; menu.appendChild(colorTitle);
@@ -193,7 +189,6 @@ function showContextMenu(event, node) {
     }, 0);
 }
 
-// --- НАСТРОЙКИ ---
 bindEvent('btn-settings', 'click', () => {
     const bgColorsDiv = document.getElementById('bg-colors');
     if (bgColorsDiv.innerHTML === '') {
@@ -206,15 +201,12 @@ bindEvent('btn-settings', 'click', () => {
     }
     document.getElementById('global-modal')?.classList.remove('hidden');
 });
-
 bindEvent('global-cancel', 'click', () => document.getElementById('global-modal')?.classList.add('hidden'));
-
 bindEvent('global-save', 'click', () => {
     const url = document.getElementById('bg-image-url').value.trim();
     if (url) container.style.backgroundImage = `url(${url})`;
     document.getElementById('global-modal')?.classList.add('hidden');
 });
-
 bindEvent('bg-image-file', 'change', (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -224,11 +216,9 @@ bindEvent('bg-image-file', 'change', (e) => {
     }
 });
 
-// --- ОКНО "О ПРОГРАММЕ" ---
 bindEvent('btn-about', 'click', () => document.getElementById('about-modal')?.classList.remove('hidden'));
 bindEvent('about-close', 'click', () => document.getElementById('about-modal')?.classList.add('hidden'));
 
-// --- СОХРАНЕНИЕ / ЗАГРУЗКА ---
 function prepareForRust(modelData) {
     return {
         nodes: modelData.nodes.map(n => ({
@@ -275,7 +265,6 @@ bindEvent('load', 'click', async () => {
     } catch (err) { alert('Ошибка: ' + err); }
 });
 
-// --- JSON ОКНО ---
 bindEvent('btn-json', 'click', () => document.getElementById('json-modal')?.classList.remove('hidden'));
 bindEvent('json-close', 'click', () => document.getElementById('json-modal')?.classList.add('hidden'));
 bindEvent('json-export', 'click', () => {
