@@ -92,6 +92,16 @@ function showContextMenu(event, node) {
 
     const hr = document.createElement('div'); hr.style.cssText = 'height:1px; background:#eee; margin:4px 0;'; menu.appendChild(hr);
 
+    // --- ДЛИНА СТРОКИ (Ширина текста) ---
+    const lineWidthDiv = document.createElement('div');
+    lineWidthDiv.style.cssText = 'padding:6px 12px; display:flex; align-items:center; gap:8px;';
+    lineWidthDiv.innerHTML = `<span style="flex:1">Длина строки</span>`;
+    const lwMinus = document.createElement('button'); lwMinus.textContent = '◀';
+    lwMinus.addEventListener('click', (e) => { e.stopPropagation(); node.lineWidth = Math.max(50, (node.lineWidth || 180) - 20); renderer.render(); });
+    const lwPlus = document.createElement('button'); lwPlus.textContent = '▶';
+    lwPlus.addEventListener('click', (e) => { e.stopPropagation(); node.lineWidth = (node.lineWidth || 180) + 20; renderer.render(); });
+    lineWidthDiv.appendChild(lwMinus); lineWidthDiv.appendChild(lwPlus); menu.appendChild(lineWidthDiv);
+
     // --- РАЗМЕР УЗЛА (ОБЩИЙ МАСШТАБ) ---
     const sizeDiv = document.createElement('div');
     sizeDiv.style.cssText = 'padding:6px 12px; display:flex; align-items:center; gap:8px;';
@@ -189,6 +199,7 @@ function showContextMenu(event, node) {
     }, 0);
 }
 
+// --- НАСТРОЙКИ ---
 bindEvent('btn-settings', 'click', () => {
     const bgColorsDiv = document.getElementById('bg-colors');
     if (bgColorsDiv.innerHTML === '') {
@@ -225,7 +236,8 @@ function prepareForRust(modelData) {
             id: n.id, x: n.x, y: n.y, title: n.title, text: n.text, link: n.link,
             color: n.color, font_color: n.fontColor || '#333333', shape: n.shape,
             scale: n.scale || 1, is_expanded: n.isExpanded !== undefined ? n.isExpanded : true,
-            font_size: n.fontSize || 14, stretch_x: n.stretchX || 1, stretch_y: n.stretchY || 1
+            font_size: n.fontSize || 14, stretch_x: n.stretchX || 1, stretch_y: n.stretchY || 1,
+            line_width: n.lineWidth || 180 // ДОБАВЛЕНО
         })),
         edges: modelData.edges.map(e => ({ from: e.from, to: e.to, color: e.color || '#888888', thickness: e.thickness || 2 }))
     };
@@ -275,7 +287,7 @@ bindEvent('json-export', 'click', () => {
         nodes: currentData.nodes.map(n => ({
             id: n.id, x: Math.round(n.x), y: Math.round(n.y), title: n.title, text: n.text,
             color: n.color, fontColor: n.fontColor || '#333333', shape: n.shape, isExpanded: n.isExpanded,
-            stretchX: n.stretchX || 1, stretchY: n.stretchY || 1
+            stretchX: n.stretchX || 1, stretchY: n.stretchY || 1, lineWidth: n.lineWidth || 180
         })),
         edges: currentData.edges.map(e => ({ from: e.from, to: e.to, color: e.color, thickness: e.thickness }))
     };
@@ -295,7 +307,7 @@ bindEvent('json-build', 'click', () => {
                 id: id, x: n.x || 500, y: n.y || 300, title: n.title || 'Без названия', text: n.text || '', link: n.link || null,
                 color: n.color || '#ffffff', fontColor: n.fontColor || '#333333', shape: n.shape || 'rect', fontSize: n.fontSize || 14, scale: n.scale || 1,
                 isExpanded: n.isExpanded !== undefined ? n.isExpanded : (n.is_expanded !== undefined ? n.is_expanded : true), 
-                baseWidth: 180, stretchX: n.stretchX || 1, stretchY: n.stretchY || 1
+                baseWidth: 180, stretchX: n.stretchX || 1, stretchY: n.stretchY || 1, lineWidth: n.lineWidth || 180
             });
             const num = parseInt(String(id).replace('node_', ''), 10);
             if (!isNaN(num) && num >= model._nextId) model._nextId = num + 1;

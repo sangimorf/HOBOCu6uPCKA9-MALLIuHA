@@ -16,6 +16,12 @@ export class CanvasRenderer {
         this._panStart = { x: 0, y: 0 };
         this._dragData = null;
         
+        this._domNodes = new Map(); 
+        this._domEdges = [];        
+
+        this._rafId = null;
+        this._pendingMouseMove = null;
+
         this._initEvents();
     }
 
@@ -42,10 +48,11 @@ export class CanvasRenderer {
         }, { passive: false });
 
         this.svg.addEventListener('mousedown', (e) => {
-            if (e.button === 1) {
+            if (e.button === 1) { // Зажатое колесико
                 e.preventDefault();
                 this._isPanning = true;
                 this._panStart = { x: e.clientX - this.viewTransform.x, y: e.clientY - this.viewTransform.y };
+                this.svg.style.cursor = 'grabbing';
             }
             if (e.button === 0 && (e.target.tagName === 'svg' || e.target.id === 'viewport')) {
                 this.setSelected(null);
@@ -58,20 +65,47 @@ export class CanvasRenderer {
                 this.viewTransform.y = e.clientY - this._panStart.y;
                 this._updateViewport();
             }
-            if (this._dragData) this._onMouseMoveNode(e);
+            
+            if (this._dragData) {
+                this._pendingMouseMove = e;
+                if (!this._rafId) {
+                    this._rafId = requestAnimationFrame(() => {
+                        this._onMouseMoveNode(this._pendingMouseMove);
+                        this._rafId = null;
+                    });
+                }
+            }
         });
 
         window.addEventListener('mouseup', (e) => {
-            if (e.button === 1) this._isPanning = false;
-            if (e.button === 0) this._dragData = null;
+            if (e.button === 1) {
+                this._isPanning = false;
+                this.svg.style.cursor = 'grab';
+            }
+            if (e.button === 0) {
+                this._dragData = null;
+                if (this._rafId) {
+                    cancelAnimationFrame(this._rafId);
+                    this._rafId = null;
+                }
+            }
         });
     }
 
     setSelected(node) {
         if (this.selectedNodeId === (node ? node.id : null)) return;
         this.selectedNodeId = node ? node.id : null;
+        
+        this._domNodes.forEach(val => {
+            if (val.shape) val.shape.classList.remove('node-selected');
+        });
+        
+        if (node && this._domNodes.has(node.id)) {
+            const dom = this._domNodes.get(node.id);
+            if (dom.shape) dom.shape.classList.add('node-selected');
+        }
+
         this.callbacks.onNodeSelect?.(node);
-        this.render();
     }
 
     _updateViewport() {
@@ -80,6 +114,9 @@ export class CanvasRenderer {
 
     render() {
         this.viewport.innerHTML = '';
+        this._domNodes.clear();
+        this._domEdges = [];
+        
         const { model } = this;
 
         for (const edge of model.edges) {
@@ -95,6 +132,7 @@ export class CanvasRenderer {
             line.setAttribute('stroke', edge.color || '#888888');
             line.setAttribute('stroke-width', edge.thickness || 2);
             this.viewport.appendChild(line);
+            this._domEdges.push({ line, edge });
         }
 
         for (const node of model.nodes.values()) {
@@ -112,10 +150,10 @@ export class CanvasRenderer {
         const stretchX = node.stretchX || 1;
         const stretchY = node.stretchY || 1;
 
-        // Ограничиваем ширину текста для верстки (в пикселях)
-        let maxTextWidth = 180 * scale;
-        if (node.shape === 'ellipse') maxTextWidth = 140 * scale;
-        if (node.shape === 'diamond') maxTextWidth = 110 * scale;
+        // Настройка ширины текста (lineWidth)
+        let maxTextWidth = (node.lineWidth || 180) * scale;
+        if (node.shape === 'ellipse') maxTextWidth = (node.lineWidth || 140) * scale;
+        if (node.shape === 'diamond') maxTextWidth = (node.lineWidth || 110) * scale;
 
         const charWidth = fs * 0.55;
         const maxChars = Math.floor(maxTextWidth / charWidth);
@@ -140,28 +178,16 @@ export class CanvasRenderer {
         let titleLines = splitText(node.title || '');
         let textLines = splitText(node.text || '');
 
-        // --- ИСПРАВЛЕНИЕ: Если узел развернут, НЕТ лимита на строки. ---
-        // Если свернут, показываем максимум 2 строки заголовка и 4 строки текста.
         let isTruncated = false;
         if (!node.isExpanded) {
-            const maxTitleLines = 2;
-            const maxTextLines = 4;
-            if (titleLines.length > maxTitleLines) {
-                titleLines = titleLines.slice(0, maxTitleLines);
-                isTruncated = true;
-            }
-            if (textLines.length > maxTextLines) {
-                textLines = textLines.slice(0, maxTextLines);
-                isTruncated = true;
-            }
+            if (titleLines.length > 2) { titleLines = titleLines.slice(0, 2); isTruncated = true; }
+            if (textLines.length > 4) { textLines = textLines.slice(0, 4); isTruncated = true; }
         }
 
         const lineHeight = fs * 1.4;
         const textH = (titleLines.length + textLines.length) * lineHeight;
         
-        // Базовые габариты
         let baseW, baseH;
-
         if (node.shape === 'ellipse') {
             baseH = Math.max(100 * scale, textH * 1.4 + 40 * scale);
             baseW = baseH / 1.3;
@@ -174,11 +200,9 @@ export class CanvasRenderer {
             baseH = Math.max(60 * scale, textH + 30 * scale);
         }
 
-        // Применяем ручные настройки ширины/высоты
         const w = baseW * stretchX;
         const h = baseH * stretchY;
 
-        // Рисуем форму
         let shape;
         if (node.shape === 'ellipse') {
             shape = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
@@ -205,9 +229,7 @@ export class CanvasRenderer {
         if (titleLines.length > 0) {
             titleLines.forEach((line, index) => {
                 let displayLine = line;
-                if (index === titleLines.length - 1 && isTruncated && !node.isExpanded) {
-                    displayLine += '...';
-                }
+                if (index === titleLines.length - 1 && isTruncated && !node.isExpanded) displayLine += '...';
 
                 const titleEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 titleEl.setAttribute('class', 'node-title');
@@ -224,9 +246,7 @@ export class CanvasRenderer {
         if (textLines.length > 0) {
             textLines.forEach((line, index) => {
                 let displayLine = line;
-                if (index === textLines.length - 1 && isTruncated && !node.isExpanded) {
-                    displayLine += '...';
-                }
+                if (index === textLines.length - 1 && isTruncated && !node.isExpanded) displayLine += '...';
 
                 const textEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 textEl.setAttribute('class', 'node-text');
@@ -240,7 +260,6 @@ export class CanvasRenderer {
             });
         }
 
-        // Кнопка свернуть/развернуть
         const btnGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         btnGroup.style.cursor = 'pointer';
         
@@ -254,9 +273,7 @@ export class CanvasRenderer {
         btn.setAttribute('text-anchor', 'middle'); btn.setAttribute('dominant-baseline', 'central');
         btn.setAttribute('font-size', '16'); btn.textContent = node.isExpanded ? '−' : '+';
         
-        btnGroup.appendChild(circle);
-        btnGroup.appendChild(btn);
-        
+        btnGroup.appendChild(circle); btnGroup.appendChild(btn);
         btnGroup.addEventListener('mousedown', (e) => {
             e.stopPropagation(); e.preventDefault();
             node.isExpanded = !node.isExpanded; this.render();
@@ -265,6 +282,8 @@ export class CanvasRenderer {
         
         g.setAttribute('transform', `translate(${node.x}, ${node.y})`);
         this.viewport.appendChild(g);
+
+        this._domNodes.set(node.id, { g, shape });
 
         g.addEventListener('mousedown', (e) => {
             if (e.button !== 0) return;
@@ -281,12 +300,25 @@ export class CanvasRenderer {
     _onMouseMoveNode(e) {
         if (!this._dragData) return;
         const { node, offsetX, offsetY, g } = this._dragData;
-        const pt = this.svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+        
+        const pt = this.svg.createSVGPoint(); 
+        pt.x = e.clientX; pt.y = e.clientY;
         const svgP = pt.matrixTransform(this.viewport.getScreenCTM().inverse());
-        node.x = svgP.x + offsetX; node.y = svgP.y + offsetY;
+        
+        node.x = svgP.x + offsetX;
+        node.y = svgP.y + offsetY;
+        
         g.setAttribute('transform', `translate(${node.x}, ${node.y})`);
-        this.render();
-        const el = Array.from(this.viewport.querySelectorAll('.node-group')).find(n => n.dataset.id === node.id);
-        if (el) this.viewport.appendChild(el);
+
+        for (const item of this._domEdges) {
+            if (item.edge.from === node.id) {
+                item.line.setAttribute('x1', node.x);
+                item.line.setAttribute('y1', node.y);
+            }
+            if (item.edge.to === node.id) {
+                item.line.setAttribute('x2', node.x);
+                item.line.setAttribute('y2', node.y);
+            }
+        }
     }
 }

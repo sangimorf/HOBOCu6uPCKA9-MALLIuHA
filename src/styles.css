@@ -14,7 +14,6 @@ body { margin: 0; font-family: sans-serif; overflow: hidden; user-select: none; 
 #toolbar button:hover { background: #e0e0e0; }
 .separator { width: 1px; height: 24px; background: #ccc; margin: 0 10px; }
 
-/* Слой для фона */
 #canvas-container {
     position: absolute; top: 44px; left: 0;
     width: 100%; height: calc(100% - 44px);
@@ -25,13 +24,22 @@ body { margin: 0; font-family: sans-serif; overflow: hidden; user-select: none; 
 }
 #canvas-container:active { cursor: grabbing; }
 
-svg { width: 100%; height: 100%; display: block; position: relative; z-index: 2; }
+svg { 
+    width: 100%; 
+    height: 100%; 
+    display: block; 
+    position: relative; 
+    z-index: 2;
+    /* Аппаратное ускорение и отключение сглаживания при движении */
+    will-change: transform;
+    transform: translateZ(0);
+    shape-rendering: optimizeSpeed; 
+}
 
 .node-group { cursor: move; }
 .node-rect { stroke: #333; stroke-width: 2px; }
 .node-selected { stroke: #007bff !important; stroke-width: 4px !important; }
 
-/* Убираем дефолтные цвета, теперь они задаются инлайн из модели */
 .node-text { text-anchor: middle; dominant-baseline: central; pointer-events: none; }
 .node-title { font-weight: bold; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
 
@@ -39,13 +47,13 @@ svg { width: 100%; height: 100%; display: block; position: relative; z-index: 2;
 .toggle-btn:hover { fill: #0056b3; }
 
 /* Модалки */
-#modal, #global-modal {
+#modal, #global-modal, #json-modal, #about-modal {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0,0,0,0.5);
     display: flex; justify-content: center; align-items: center;
-    z-index: 1000;
+    z-index: 2000;
 }
-#modal.hidden, #global-modal.hidden { display: none; }
+#modal.hidden, #global-modal.hidden, #json-modal.hidden, #about-modal.hidden { display: none !important; }
 .modal-content {
     background: #fff; padding: 20px; border-radius: 8px;
     width: 340px; display: flex; flex-direction: column; gap: 8px;
@@ -57,3 +65,21 @@ svg { width: 100%; height: 100%; display: block; position: relative; z-index: 2;
 }
 .modal-actions { display: flex; gap: 10px; margin-top: 10px; }
 .modal-actions button { flex: 1; padding: 8px; cursor: pointer; }
+
+/* Окно JSON */
+.json-window {
+    background: #fff; width: 1200px; max-width: 98vw; height: 90vh; 
+    border-radius: 8px; display: flex; flex-direction: column; 
+    overflow: hidden; color: #000; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+.json-body { display: flex; gap: 15px; padding: 15px; flex: 1; overflow: hidden; }
+.json-col { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+.json-col label { font-weight: bold; font-size: 14px; }
+.json-col p { font-size: 12px; color: #666; margin: 0 0 5px 0; }
+.json-textarea {
+    flex: 1; width: 100%; padding: 10px; font-family: monospace; 
+    font-size: 13px; border: 1px solid #ccc; border-radius: 4px; 
+    resize: none; background: #f9f9f9;
+}
+.json-textarea:focus { background: #fff; outline: 2px solid #90caf9; }
+#lang-select { padding: 4px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; outline: none; cursor: pointer; margin-left: auto; }
